@@ -1,0 +1,15 @@
+{
+    "name": "demo",
+    "description": "Express YUI - Locator Integration Example.",
+    "version": "0.0.1",
+    "private": true,
+    "main": "app.js",
+    "dependencies": {
+        "express": "*",
+        "express-yui": "*",
+        "locator": "~0.3.0",
+        "locator-handlebars": "*",
+        "locator-micro": "*",
+        "yui": "~3.11.0"
+    }
+}

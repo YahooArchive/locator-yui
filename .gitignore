@@ -1,0 +1,7 @@
+examples/locator-express/build
+examples/css-modules/build
+artifacts/*
+build/*
+coverage/*
+node_modules
+npm-debug.log

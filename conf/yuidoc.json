@@ -1,0 +1,10 @@
+{
+  "name": "express-yui API documentation",
+  "description": "express-yui API documentation",
+  "version": "0.2.0",
+  "url": "https://github.com/yahoo/express-yui",
+  "options": {
+    "paths": [ "lib" ],
+    "outdir": "./apidocs"
+  }
+}
