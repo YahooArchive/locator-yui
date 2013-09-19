@@ -1,6 +1,4 @@
 artifacts
-apidocs
 coverage
-examples
-conf
+example
 tests
