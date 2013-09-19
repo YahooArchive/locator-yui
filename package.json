@@ -27,7 +27,7 @@
         "yui-lint": "~0.1.3",
         "yuitest": "0.7.x"
     },
-    "main": "index",
+    "main": "./lib/plugin",
     "keywords": [
         "framework",
         "yui",
