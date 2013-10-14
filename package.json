@@ -1,6 +1,6 @@
 {
     "name": "locator-yui",
-    "description": "YUI modules compiler for locator",
+    "description": "Locator plugin for generating YUI Loader metadata for YUI modules",
     "version": "0.0.1",
     "homepage": "https://github.com/yahoo/locator-yui",
     "author": "Caridy Patino <caridy@yahoo-inc.com> (http://github.com/caridy)",
@@ -36,6 +36,10 @@
         "javascript",
         "express"
     ],
+    "licenses": {
+        "type": "Yahoo Inc. BSD License",
+        "url": "https://github.com/yahoo/locator-yui/blob/master/LICENSE.md"
+    },
     "directories": {
         "lib"    : "./lib/plugin"
     },
