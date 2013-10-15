@@ -31,22 +31,9 @@ var YUITest = require('yuitest'),
         return '/tmp'; // fallback to the default
     };
 
-// mocking win-spawn
-mockspawn = function () {
-    return childMockFn.apply(this, arguments);
-};
-mockery.registerMock('win-spawn', mockspawn);
-mockery.enable({
-    warnOnReplace: false,
-    warnOnUnregistered: false
-});
 
 // forcing mode to be development
 process.env.NODE_ENV = 'development';
-
-// requiring component
-shifter = require('../../lib/shifter.js');
-BuilderClass = require('../../lib/builder.js');
 
 suite = new YUITest.TestSuite("shifter-test suite");
 
@@ -55,10 +42,33 @@ suite.add(new YUITest.TestCase({
 
     setUp: function () {
         // nothing
+        // mocking win-spawn
+        mockspawn = function () {
+            return childMockFn.apply(this, arguments);
+        };
+        mockery.registerMock('win-spawn', mockspawn);
+        mockery.enable({
+            useCleanCache: true,
+            warnOnReplace: false,
+            warnOnUnregistered: false
+        });
+
+        // requiring component
+        shifter = require('../../lib/shifter.js');
+        BuilderClass = require('../../lib/builder.js');
+
     },
 
     tearDown: function () {
         // unregister mocks
+        mockspawn = null;
+
+        // mockery.deregisterMock('win-spawn');
+        mockery.deregisterAll();
+        mockery.disable();
+
+        shifter = null;
+        BuilderClass = null;
     },
 
     "test constructor": function () {
@@ -128,6 +138,7 @@ suite.add(new YUITest.TestCase({
             method: 'on',
             args: ['exit', YUITest.Mock.Value.Function],
             callCount: 2,
+            // callCount: 0,
             run: function (evt, fn) {
                 fn();
             }
