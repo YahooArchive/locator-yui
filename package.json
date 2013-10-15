@@ -29,12 +29,12 @@
     },
     "main": "./lib/plugin",
     "keywords": [
+        "express",
         "framework",
-        "yui",
-        "mojito",
-        "modown",
         "javascript",
-        "express"
+        "modown",
+        "mojito",
+        "yui"
     ],
     "licenses": {
         "type": "Yahoo Inc. BSD License",

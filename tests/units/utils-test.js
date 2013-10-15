@@ -11,7 +11,6 @@
 var YUITest = require('yuitest'),
     A = YUITest.Assert,
     OA = YUITest.ObjectAssert,
-    mockery = require('mockery'),
     libutils = require('../../lib/utils'),
     suite;
 
