@@ -15,7 +15,7 @@ var YUITest = require('yuitest'),
     mockery = require('mockery'),
     mockShifter,
     mockBuilder,
-    PluginClass = require('../../lib/plugin.js');
+    PluginClass;
 
 function createBundles() {
     return {
@@ -60,11 +60,6 @@ suite.add(new YUITest.TestCase({
     name: "plugin-test",
 
     setUp: function () {
-        mockery.enable({
-            useCleanCache: true,
-            warnOnReplace: true,
-            warnOnUnregistered: true
-        });
         mockShifter = YUITest.Mock();
         mockBuilder = function (name, group) {
             this.compile = function (meta) {
@@ -77,8 +72,15 @@ suite.add(new YUITest.TestCase({
                 }
             };
         };
-        mockery.register('./shifter', mockShifter);
-        mockery.register('./builder', mockBuilder);
+        mockery.enable({
+            useCleanCache: true,
+            warnOnReplace: false,
+            warnOnUnregistered: false
+        });
+        mockery.registerMock('./shifter', mockShifter);
+        // mockery.registerMock('./builder', mockBuilder);
+
+        PluginClass = require('../../lib/plugin.js');
     },
 
     // PluginClass
@@ -88,10 +90,10 @@ suite.add(new YUITest.TestCase({
     // _buildsInBundle
     //
     tearDown: function () {
-        mockShifter = null;
-        mockBuilder = null;
         mockery.deregisterAll();
         mockery.disable();
+        mockShifter = null;
+        mockBuilder = null;
     },
 
     "test require plugin": function () {
@@ -171,6 +173,7 @@ suite.add(new YUITest.TestCase({
         // { 'news-model': { affinity: 'client', group: 'photonews', requires:
         // [Object] } }
         // A.areEqual('client', json.affinity, 'wrong affinity');
+        
         A.areEqual('photonews', json['news-model'].group, 'wrong group');
         A.isNotUndefined(json['news-model'].requires, 'missing "requires"');
         A.areEqual(1, json['news-model'].requires.length, 'wrong # of modules in "requires"');
@@ -342,6 +345,7 @@ suite.add(new YUITest.TestCase({
 
         YUITest.Mock.verify(plugin);
     },
+
     "test shiftEverything when shiftFiles throws error": function () {
         var plugin,
             fn,
@@ -571,7 +575,75 @@ suite.add(new YUITest.TestCase({
         }, api);
         YUITest.Mock.verify(api);
         YUITest.Mock.verify(plugin);
+    },
+
+    "test _buildsInBundle": function () {
+        var plugin,
+            bundle,
+            jsFiles,
+            jsonFiles,
+            results;
+
+        bundle = {
+            name: 'foo'
+        };
+        jsFiles = [
+            '/tmp/a.js',
+            '/tmp/loader-foo.js'
+        ];
+        jsonFiles = [
+            '/tmp/config.json',
+            '/tmp/build.json'
+        ];
+        mockery.resetCache();
+        plugin = new PluginClass();
+
+        YUITest.Mock.expect(plugin, {
+            method: 'register',
+            args: [YUITest.Mock.Value.String,
+                    YUITest.Mock.Value.String,
+                    YUITest.Mock.Value.Object],
+            callCount: 2,
+            run: function (bundleName, file, mod) {
+                console.log(file);
+                A.areEqual('foo', bundleName, 'wrong bundleName');
+            }
+        });
+
+        YUITest.Mock.expect(mockShifter, {
+            method: '_checkYUIModule',
+            args: [YUITest.Mock.Value.String],
+            run: function (file) {
+                A.isTrue(['/tmp/a.js'].indexOf(file) > -1,
+                         'unexpected file being processed: ' + file);
+
+                return {
+                };
+            }
+        });
+        YUITest.Mock.expect(mockShifter, {
+            method: '_checkBuildFile',
+            args: [YUITest.Mock.Value.String],
+            callCount: 1,
+            run: function (file) {
+                A.areEqual('/tmp/build.json', file, 'wrong loader file');
+                return {
+                };
+            }
+        });
+
+
+        results = plugin._buildsInBundle(
+            bundle,
+            jsFiles,
+            jsonFiles
+        );
+
+        A.isNotUndefined(results, 'expecting results');
+        YUITest.Mock.verify(plugin);
+        YUITest.Mock.verify(mockShifter);
     }
+
 }));
 
 YUITest.TestRunner.add(suite);
