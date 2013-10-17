@@ -458,8 +458,8 @@ suite.add(new YUITest.TestCase({
         });
         YUITest.Mock.expect(plugin, {
             method: 'generateClientDataFactory',
-            args: [YUITest.Mock.Value.Object],
-            run: function (bundle) {
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.String],
+            run: function (bundle, moduleName) {
                 return function generateClientData() { };
             }
         });
@@ -480,11 +480,9 @@ suite.add(new YUITest.TestCase({
         });
         YUITest.Mock.expect(plugin, {
             method: 'attachClientDataFactory',
-            args: [YUITest.Mock.Value.Object],
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Object, YUITest.Mock.Value.String],
             run: function () {
-                return function () {
-                    return function attachClientData() {
-                    };
+                return function attachClientData() {
                 };
             }
         });
@@ -605,7 +603,6 @@ suite.add(new YUITest.TestCase({
                     YUITest.Mock.Value.Object],
             callCount: 2,
             run: function (bundleName, file, mod) {
-                console.log(file);
                 A.areEqual('foo', bundleName, 'wrong bundleName');
             }
         });
