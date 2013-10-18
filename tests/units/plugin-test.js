@@ -9,6 +9,7 @@
 "use strict";
 
 var YUITest = require('yuitest'),
+    Promise = require('yui/promise').Promise,
     A = YUITest.Assert,
     OA = YUITest.ObjectAssert,
     suite,
@@ -168,8 +169,6 @@ suite.add(new YUITest.TestCase({
         A.isNotUndefined(loaderData.json, 'wrong loaderData.json');
 
         json = loaderData.json;
-        // console.log(loaderData);
-        // console.log(json);
         // { 'news-model': { affinity: 'client', group: 'photonews', requires:
         // [Object] } }
         // A.areEqual('client', json.affinity, 'wrong affinity');
@@ -443,160 +442,105 @@ suite.add(new YUITest.TestCase({
         A.areEqual('/a/b/loader-foo.js', builds[0], 'wrong builds[0]');
     },
 
-    // "test plugin flow with register and attach": function () {
-    //     var plugin = new PluginClass({}),
-    //         api = YUITest.Mock(),
-    //         bundle = {
-    //             name: 'foo',
-    //             buildDirectory: '/path/to/foo-a.b.c'
-    //         };
+    "test plugin flow with register and attach": function () {
+        var plugin = new PluginClass({}),
+            api = YUITest.Mock(),
+            bundle = {
+                name: 'foo',
+                buildDirectory: '/path/to/foo-a.b.c'
+            };
 
-    //     plugin._bundles = {
-    //         'foo': {
-    //             'bar.js': {
-    //                 'buildfile': 'bar.js',
-    //                 builds: {
-    //                     'foo-bar': {
-    //                         config: { requires: [ ] },
-    //                         name: 'foo-bar'
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     };
+        plugin._bundles = {
+            'foo': {
+                'bar.js': {
+                    'buildfile': 'bar.js',
+                    builds: {
+                        'foo-bar': {
+                            config: { requires: [ ] },
+                            name: 'foo-bar'
+                        }
+                    }
+                }
+            }
+        };
 
-    //     YUITest.Mock.expect(api, {
-    //         method: 'getBundleFiles',
-    //         args: ['foo', YUITest.Mock.Value.Object],
-    //         run: function (bundleName, filters) {
-    //             return ['bar.js', 'baz.js', 'path/to/build.json'];
-    //         }
-    //     });
-    //     YUITest.Mock.expect(plugin, {
-    //         method: 'generateServerDataFactory',
-    //         args: [YUITest.Mock.Value.Object],
-    //         run: function (bundle) {
-    //             return function generateServerData() { };
-    //         }
-    //     });
-    //     YUITest.Mock.expect(plugin, {
-    //         method: 'generateClientDataFactory',
-    //         args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.String],
-    //         run: function (bundle, moduleName) {
-    //             return function generateClientData() { };
-    //         }
-    //     });
-    //     YUITest.Mock.expect(plugin, {
-    //         method: 'shiftEverythingFactory',
-    //         // function (bundle, cssproc, builds, shifter)
-    //         args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Any, YUITest.Mock.Value.Any, YUITest.Mock.Value.Object],
-    //         run: function () {
-    //             return function shiftEverything() { };
-    //         }
-    //     });
-    //     YUITest.Mock.expect(plugin, {
-    //         method: 'attachServerDataFactory',
-    //         args: [YUITest.Mock.Value.Object],
-    //         run: function () {
-    //             return function attachServerData() { };
-    //         }
-    //     });
-    //     YUITest.Mock.expect(plugin, {
-    //         method: 'attachClientDataFactory',
-    //         args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Object, YUITest.Mock.Value.String],
-    //         run: function () {
-    //             return function attachClientData() {
-    //             };
-    //         }
-    //     });
-    //     YUITest.Mock.expect(api, {
-    //         method: 'promise',
-    //         args: [YUITest.Mock.Value.Function],
-    //         callCount: 2,
-    //         run: function (fn) {
-    //             if (fn.name === 'generateServerData') {
-    //                 return {
-    //                     then: function (fn) {
-    //                         A.areEqual('attachServerData', fn.name, 'wrong function');
-    //                         return {
-    //                             then: function (fn) {
-    //                                 // fn is anonymous
-    //                                 // var p = fn();
-    //                                 // A.areEqual(promise, p, 'should be a promise');
-    //                                 return {
-    //                                     then: function (fn) {
-    //                                         A.areEqual('attachClientData', fn.name, 'wrong function');
-    //                                         return {
-    //                                             then: function (fn) {
-    //                                                 // fn == function (newfile)
-    //                                                 return {
-    //                                                     then: function (fn) {
-    //                                                         // fn == anynmous,
-    //                                                         var p = fn();
-    //                                                         A.areEqual('api.promise(shiftEverything)', p, 'wrong promise');
-    //                                                     }
-    //                                                 };
-    //                                             }
-    //                                         }
-    //                                     }
-    //                                 };
-    //                             }
-    //                         };
-    //                     }
-    //                 };
-    //             } else if (fn.name === 'shiftEverything') {
-    //                 return 'api.promise(shiftEverything)';
-    //             }
+        YUITest.Mock.expect(api, {
+            method: 'getBundleFiles',
+            args: ['foo', YUITest.Mock.Value.Object],
+            run: function (bundleName, filters) {
+                return ['path/to/build.json'];
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_buildsInBundle',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Object, YUITest.Mock.Value.Object],
+            run: function (bundle, files, jsonFiles) {
+                return ['bar.js'];
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_createServerLoaderData',
+            args: [YUITest.Mock.Value.Object],
+            run: function (bundle) {
+                return { loaderData: 'serverLoaderData' };
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_createClientLoaderData',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.String],
+            run: function (bundle, moduleName) {
+                return { loaderData: 'clientLoaderData' };
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_shiftEverything',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Any, YUITest.Mock.Value.Any, YUITest.Mock.Value.Object, YUITest.Mock.Value.Function],
+            run: function (bundle, cssproc, builds, shifter, cb) {
+                cb(); // no error
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_attachServerLoaderData',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Object],
+            run: function (bundle, loaderData) {
+                // assert loaderData
+                return;
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_attachClientLoaderData',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Object, YUITest.Mock.Value.String],
+            run: function (bundle, api, destPath, loaderData) {
+                // assert loaderData
+                return '/a/b/loader-foo.js';
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_attachClientMetaData',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Object, YUITest.Mock.Value.String, YUITest.Mock.Value.String],
+            run: function (bundle, builds, moduleName, newfile) {
+                // assert moduleName
+                // assert newfile
+            }
+        });
 
-    //             A.isTrue(false, 'wrong function passed to api.promise');
-    //         }
-    //     });
-    //     YUITest.Mock.expect(mockShifter, {
-    //         method: '_checkYUIModule',
-    //         callCount: 3,
-    //         args: [YUITest.Mock.Value.String],
-    //         run: function () {
-    //             return '_checkYUIModule result';
-    //         }
-    //     });
-    //     YUITest.Mock.expect(mockShifter, {
-    //         method: '_checkBuildFile',
-    //         callCount: 1,
-    //         args: [YUITest.Mock.Value.String],
-    //         run: function () {
-    //             return '_checkBuildFile result';
-    //         }
-    //     });
-    //     YUITest.Mock.expect(plugin, {
-    //         method: '_buildsInBundle',
-    //         args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Any, YUITest.Mock.Value.Any],
-    //         run: function (bundle, modifiedFiles) {
-    //             return ['bar.js'];
-    //         }
-    //     });
-    //     YUITest.Mock.expect(plugin, {
-    //         method: 'register',
-    //         callCount: 0,
-    //         args: ['foo', '/path/to/foo-a.b.c', __filename]
-    //     });
-    //     YUITest.Mock.expect(mockShifter, {
-    //         method: 'shiftFiles',
-    //         args: [YUITest.Mock.Value.Any, YUITest.Mock.Value.Object, YUITest.Mock.Value.Function],
-    //         run: function (files, options, callback) {
-    //             callback();
-    //         }
-    //     });
-    //     plugin.bundleUpdated({
-    //         bundle: bundle,
-    //         files: {
-    //             'bar.js': { fullPath: 'bar.js' },
-    //             'baz.js': { fullPath: 'baz.js' },
-    //             'path/to/something.js': { fullPath: 'path/to/something.js' }
-    //         }
-    //     }, api);
-    //     YUITest.Mock.verify(api);
-    //     YUITest.Mock.verify(plugin);
-    // },
+        plugin.bundleUpdated({
+            bundle: bundle,
+            files: {
+                'bar.js': { fullPath: 'bar.js' },
+                'baz.js': { fullPath: 'baz.js' },
+                'path/to/something.js': { fullPath: 'path/to/something.js' }
+            }
+        }, {
+            getBundleFiles: api.getBundleFiles,
+            promise: function (fn) {
+                return new Promise(fn);
+            }
+        });
+        YUITest.Mock.verify(api);
+        // FIXME !!!
+        // YUITest.Mock.verify(plugin);
+    },
 
     "test _buildsInBundle": function () {
         var plugin,
@@ -651,7 +595,6 @@ suite.add(new YUITest.TestCase({
                 };
             }
         });
-
 
         results = plugin._buildsInBundle(
             bundle,
