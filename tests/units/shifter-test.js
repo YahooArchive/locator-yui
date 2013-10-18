@@ -221,6 +221,24 @@ suite.add(new YUITest.TestCase({
         this.wait();
     },
 
+    "test _clearCached": function () {
+        var self = this;
+
+        tmp.dir(function (err, path) {
+            self.resume(function () {
+                if (err || !path) {
+                    A.fail('unable to create a temporary folder to test');
+                }
+                A.isFalse(shifter._isCached(libpath.join(fixture, 'app-module.js'), path), 'first call');
+                A.isTrue(shifter._isCached(libpath.join(fixture, 'app-module.js'), path), 'second call after caching it');
+                shifter._clearCached(libpath.join(fixture, 'app-module.js'), path);
+                A.isFalse(shifter._isCached(libpath.join(fixture, 'app-module.js'), path), 'first call');
+
+            });
+        });
+        this.wait();
+    },
+
     "test BuilderClass": function () {
 
         var obj = new (BuilderClass)({

@@ -114,12 +114,19 @@ suite.add(new YUITest.TestCase({
             args;
 
         plugin = new PluginClass({
-            filter: /^foo/
+            filter: /^foo/,
+            silent: true,
+            quiet: true
         });
 
         A.isNotUndefined(plugin.describe);
         A.areEqual('*', plugin.describe.types[0]);
         A.isTrue(typeof plugin.describe.options.filter === 'function', 'missing filter function');
+
+        A.isFunction(plugin.describe.options.filter, 'config.filter is not a function');
+        A.areEqual(true,
+                   plugin.describe.options.filter({}, 'foo/bar/baz.js'),
+                   'filter should match /^foo/');
 
         args = plugin.describe.args;
         A.isTrue(args.indexOf('--no-coverage') > -1, 'missing --no-coverage option');
