@@ -52,7 +52,7 @@ loc.parseBundle(__dirname, {});
 
 You can try a working example here:
 
-https://github.com/yahoo/locator-yui/tree/master/example
+https://github.com/yahoo/locator-yui/tree/master/example/express-yui
 
 This example explores how to use `locator-yui` on the server side with `express` and `express-yui`, while using `yui` on the client side as a medium to load the compiled modules on demand.
 

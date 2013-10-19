@@ -9,15 +9,51 @@
 "use strict";
 
 var YUITest = require('yuitest'),
+    Promise = require('yui/promise').Promise,
     A = YUITest.Assert,
     OA = YUITest.ObjectAssert,
     suite,
-    // _buildsInBundle = loader._buildsInBundle;
-    // loader = require('../../lib/loader.js'),
     mockery = require('mockery'),
     mockShifter,
     mockBuilder,
-    PluginClass = require('../../lib/plugin.js');
+    PluginClass;
+
+function createBundles() {
+    return {
+        photonews: {
+            "/tmp/photonews/build/photonews-0.0.1/app.js": {
+                "buildfile": "/tmp/photonews/build/photonews-0.0.1/app.js",
+                "builds": {
+                    "photonews-about-page": {
+                        "config": {
+                            "requires": [
+                                "template-base",
+                                "handlebars-base"
+                            ]
+                        },
+                        "name": "photonews-about-page"
+                    }
+                },
+                "name": "photonews-about-page"
+            },
+            "/tmp/photonews/build/photonews-0.0.1/models/news.js": {
+                "buildfile": "/tmp/photonews/build/photonews-0.0.1/models/news.js",
+                "builds": {
+                    "news-model": {
+                        "config": {
+                            "requires": [
+                                "model"
+                            ],
+                            "affinity": "client"
+                        },
+                        "name": "news-model"
+                    }
+                },
+                "name": "news-model"
+            }
+        }
+    };
+}
 
 suite = new YUITest.TestSuite("plugin-test suite");
 
@@ -25,14 +61,7 @@ suite.add(new YUITest.TestCase({
     name: "plugin-test",
 
     setUp: function () {
-        // nothing
-        mockery.enable({
-            useCleanCache: true,
-            warnOnReplace: true,
-            warnOnUnregistered: true
-        });
         mockShifter = YUITest.Mock();
-        // mockBuilder = YUITest.Mock();
         mockBuilder = function (name, group) {
             this.compile = function (meta) {
                 A.isObject(meta);
@@ -44,8 +73,15 @@ suite.add(new YUITest.TestCase({
                 }
             };
         };
-        mockery.register('./shifter', mockShifter);
-        mockery.register('./builder', mockBuilder);
+        mockery.enable({
+            useCleanCache: true,
+            warnOnReplace: false,
+            warnOnUnregistered: false
+        });
+        mockery.registerMock('./shifter', mockShifter);
+        // mockery.registerMock('./builder', mockBuilder);
+
+        PluginClass = require('../../lib/plugin.js');
     },
 
     // PluginClass
@@ -55,27 +91,17 @@ suite.add(new YUITest.TestCase({
     // _buildsInBundle
     //
     tearDown: function () {
-        mockShifter = null;
-        mockBuilder = null;
         mockery.deregisterAll();
         mockery.disable();
-
-        // unregister mocks
-        // delete loader._bundles;
-        // delete loader.attachModules;
-        // delete loader.registerGroup;
-        // delete loader.shiftFiles;
-        // delete loader._checkYUIModule;
-        // delete loader._checkBuildFile;
-        // delete loader.BuilderClass;
-        // loader._buildsInBundle = _buildsInBundle;
+        mockShifter = null;
+        mockBuilder = null;
     },
 
-    "test constructor": function () {
+    "test require plugin": function () {
         A.isNotNull(PluginClass, "loader require failed");
     },
 
-    "test plugin constructor": function () {
+    "test constructor": function () {
         var plugin = new PluginClass();
         A.isObject(plugin, "failing to create a plugin object");
         A.isObject(plugin.describe, "missing describe member on plugin instance");
@@ -83,30 +109,81 @@ suite.add(new YUITest.TestCase({
         A.isArray(plugin.describe.args, "default shifter options should be honored");
     },
 
-    // TODO replace with x.plugin-test.js
-    // "test plugin constructor with custom settings": function () {
-    //     var plugin = new PluginClass({
-    //         summary: 1,
-    //         types: 2,
-    //         args: ['4'],
-    //         more: 3
-    //     });
-    //     A.isObject(plugin, "failing to create a plugin object");
-    //     A.isObject(plugin.describe, "missing describe member on plugin instance");
-    //     A.areSame(1, plugin.describe.summary);
-    //     A.areSame(2, plugin.describe.types);
-    //     A.areSame(3, plugin.describe.more);
-    //     A.areSame('4', plugin.describe.args[0]);
-    // },
+    "test constructor with options": function () {
+        var plugin,
+            args;
+
+        plugin = new PluginClass({
+            filter: /^foo/,
+            silent: true,
+            quiet: true
+        });
+
+        A.isNotUndefined(plugin.describe);
+        A.areEqual('*', plugin.describe.types[0]);
+        A.isTrue(typeof plugin.describe.options.filter === 'function', 'missing filter function');
+
+        A.isFunction(plugin.describe.options.filter, 'config.filter is not a function');
+        A.areEqual(true,
+                   plugin.describe.options.filter({}, 'foo/bar/baz.js'),
+                   'filter should match /^foo/');
+
+        args = plugin.describe.args;
+        A.isTrue(args.indexOf('--no-coverage') > -1, 'missing --no-coverage option');
+        A.isTrue(args.indexOf('--no-lint') > -1, 'missing --no-lint option');
+        // A.isTrue(args.indexOf('--silent') > -1, 'missing --silent option');
+        // A.isTrue(args.indexOf('--quiet') > -1, 'missing --quiet option');
+        OA.areEqual({}, plugin._bundles, 'this._bundles was not init');
+    },
 
     "test register": function () {
         var plugin = new PluginClass();
 
-        plugin.register('foo', __dirname, 1);
-        plugin.register('bar', __filename, 2);
-        plugin.register('foo', __dirname, 3);
+        plugin._register('foo', __dirname, 1);
+        plugin._register('bar', __filename, 2);
+        plugin._register('foo', __dirname, 3);
         A.areSame(3, plugin._bundles.foo[__dirname]);
         A.areSame(2, plugin._bundles.bar[__filename]);
+    },
+
+    "test getLoaderData with non-matching bundleName": function () {
+        var plugin = new PluginClass(),
+            data = plugin._getLoaderData('foo');
+
+        A.isUndefined(data, 'wrong loaderData');
+    },
+
+    "test getLoaderData": function () {
+        var plugin,
+            bundle,
+            filter,
+            loaderData,
+            json;
+
+        plugin = new PluginClass({});
+
+        plugin._bundles = createBundles();
+        filter = function (bundleName, config) {
+            if (config.affinity === 'client') {
+                return true;
+            }
+            return false;
+        };
+
+        loaderData = plugin._getLoaderData('photonews', filter);
+
+        A.isNotUndefined(loaderData, 'wrong loaderData');
+        A.isNotUndefined(loaderData.json, 'wrong loaderData.json');
+
+        json = loaderData.json;
+        // { 'news-model': { affinity: 'client', group: 'photonews', requires:
+        // [Object] } }
+        // A.areEqual('client', json.affinity, 'wrong affinity');
+        
+        A.areEqual('photonews', json['news-model'].group, 'wrong group');
+        A.isNotUndefined(json['news-model'].requires, 'missing "requires"');
+        A.areEqual(1, json['news-model'].requires.length, 'wrong # of modules in "requires"');
+        A.areEqual('model', json['news-model'].requires[0], 'wrong required module');
     },
 
     "test plugin without any modules registered": function () {
@@ -180,14 +257,200 @@ suite.add(new YUITest.TestCase({
         }, api), 'all files should be filtered out');
         YUITest.Mock.verify(filterObj);
         YUITest.Mock.verify(api);
-    }
-    /*
+        YUITest.Mock.verify(plugin);
+    },
+
+    "test createServerLoaderData": function () {
+        var plugin = new PluginClass({}),
+            data;
+
+        YUITest.Mock.expect(plugin, {
+            method: '_getLoaderData',
+            args: ['foo', YUITest.Mock.Value.Function],
+            run: function (bundleName, fn) {
+                A.areEqual(2, fn.length, 'wrong # of args');
+                A.areEqual(true, fn('foo', { affinity: 'foo' }), 'wrong affinity');
+                return { foo: 'bar' };
+            }
+        });
+
+        data = plugin._createServerLoaderData({ name: 'foo' });
+
+        OA.areEqual({ foo: 'bar' }, data, 'wrong data returned');
+        YUITest.Mock.verify(plugin);
+    },
+
+    "test generateClientData": function () {
+        var plugin,
+            data;
+
+        plugin = new PluginClass({});
+        YUITest.Mock.expect(plugin, {
+            method: '_getLoaderData',
+            args: [ 'foo', YUITest.Mock.Value.Function ],
+            run: function (bundleName, fn) {
+                A.areEqual('foo', bundleName, 'wrong bundle name');
+                var isClient = fn('foo', { affinity: 'client' });
+                A.areEqual(true, isClient, 'wrong affnity');
+
+                return {
+                    foo: 'bar',
+                    json: { bar: 'baz' }
+                };
+            }
+        });
+        data = plugin._createClientLoaderData({name: 'foo' }, 'loader-foo');
+
+        A.isNotUndefined(data);
+        A.areEqual('baz', data.json.bar);
+        A.isNotUndefined(data.json['loader-foo']);
+        A.areEqual('foo', data.json['loader-foo'].group, 'wrong group name');
+        A.areEqual('client', data.json['loader-foo'].affinity, 'wrong affnity');
+        YUITest.Mock.verify(plugin);
+    },
+
+    "test shiftEverything": function () {
+        var plugin,
+            shifter,
+            mock;
+
+        mock = YUITest.Mock();
+        YUITest.Mock.expect(mock, {
+            method: 'callback',
+            args: [],
+            run: function () {
+                var args = [].slice.call(arguments);
+                A.areEqual(0, args.length, 'no arguments expected');
+                A.isUndefined(args[0]);
+            }
+        });
+
+        shifter = YUITest.Mock();
+        YUITest.Mock.expect(shifter, {
+            method: 'shiftFiles',
+            args: [YUITest.Mock.Value.Any,
+                    YUITest.Mock.Value.Object,
+                    YUITest.Mock.Value.Function],
+            run: function (builds, options, cb) {
+                A.areEqual('bar.js', builds[0], 'wrong file in builds');
+                A.areEqual('/tmp', options.buildDir, 'wrong buildDir');
+                A.areEqual(true, options.cache, 'cache should be defined');
+                // A.areEqual(true, options.args.indexOf('--cssproc')
+                A.isTrue(options.args.indexOf('--no-global-config') > -1, 'missing --no-global-config');
+                A.isTrue(options.args.indexOf('--no-coverage') > -1, 'missing --no-coverage');
+                A.isTrue(options.args.indexOf('--no-lint') > -1, 'missing --no-lint');
+                A.isTrue(options.args.indexOf('--cssproc') > -1, 'missing --cssproc');
+                cb(); // no error
+            }
+        });
+
+        plugin = new PluginClass({});
+        plugin._shiftEverything({
+            name: 'foo',
+            buildDirectory: '/tmp'
+        }, 'assets', ['bar.js'], shifter, mock.callback);
+
+        YUITest.Mock.verify(mock);
+        YUITest.Mock.verify(plugin);
+    },
+
+    "test shiftEverything when shiftFiles throws error": function () {
+        var plugin,
+            shifter,
+            hasError = false,
+            mock;
+
+        mock = YUITest.Mock();
+        YUITest.Mock.expect(mock, {
+            method: 'callback',
+            args: [YUITest.Mock.Value.Object],
+            run: function (err) {
+                hasError = true;
+                A.isNotUndefined(err, 'expecting error object');
+            }
+        });
+
+        shifter = YUITest.Mock();
+        YUITest.Mock.expect(shifter, {
+            method: 'shiftFiles',
+            args: [YUITest.Mock.Value.Any,
+                    YUITest.Mock.Value.Object,
+                    YUITest.Mock.Value.Function],
+            run: function (builds, options, cb) {
+                cb(new Error('fake error'));
+            }
+        });
+
+        plugin = new PluginClass({});
+        plugin._shiftEverything({
+            name: 'foo',
+            buildDirectory: '/tmp'
+        }, 'assets', ['bar.js'], shifter, mock.callback);
+
+        YUITest.Mock.verify(mock);
+        YUITest.Mock.verify(plugin);
+        A.areEqual(true, hasError, 'expected error handler to be called');
+    },
+
+    "test attachClientLoaderData": function () {
+        var plugin,
+            api,
+            path,
+            promise;
+
+        plugin = new PluginClass({});
+        api = YUITest.Mock();
+        path = '/tmp';
+
+        YUITest.Mock.expect(api, {
+            method: 'writeFileInBundle',
+            args: [YUITest.Mock.Value.String,
+                    YUITest.Mock.Value.String,
+                    YUITest.Mock.Value.Object],
+            run: function (bundleName, dstpath, data) {
+                A.areEqual('foo', bundleName, 'wrong bundleName');
+                A.areEqual('/tmp', dstpath, 'wrong dstpath');
+                OA.areEqual({bar: 'baz'}, data, 'wrong data');
+                return { promise: true };
+            }
+        });
+
+        promise = plugin._attachClientLoaderData({name: 'foo'}, api, path, {
+            json: 'bar',
+            js: { bar: 'baz' }
+        });
+
+        YUITest.Mock.verify(api);
+        A.areEqual(true, promise.promise, 'wrong promise returned');
+    },
+
+    "test attachServerLoaderData": function () {
+        var plugin,
+            bundle = {name: 'foo'};
+        plugin = new PluginClass({});
+        plugin._attachServerLoaderData(bundle, { foo: 'bar', json: { bar: 'baz' }});
+
+        A.isNotUndefined(bundle.yui);
+        A.isNotUndefined(bundle.yui.server);
+        OA.areEqual({bar: 'baz'}, bundle.yui.server, 'wrong loaderData.json value');
+    },
+
+    "test attachClientMetaData": function () {
+        var plugin,
+            bundle,
+            builds = [];
+
+        bundle = { name: 'foo', yui: {} };
+        plugin = new PluginClass({});
+        plugin._attachClientMetaData(bundle, builds, 'loader-foo', '/a/b/loader-foo.js');
+        A.areEqual('/a/b/loader-foo.js', bundle.yui.metaModuleFullpath, 'wrong metaModuleFullPath');
+        A.areEqual('loader-foo', bundle.yui.metaModuleName, 'wrong metaModuleName');
+        A.areEqual(1, builds.length, 'wrong # of files in builds');
+        A.areEqual('/a/b/loader-foo.js', builds[0], 'wrong builds[0]');
+    },
+
     "test plugin flow with register and attach": function () {
-        var plugin = new PluginClass({
-                // registerGroup: true,
-                // registerServerModules: true,
-                // useServerModules: true
-            }),
+        var plugin = new PluginClass({}),
             api = YUITest.Mock(),
             bundle = {
                 name: 'foo',
@@ -209,109 +472,65 @@ suite.add(new YUITest.TestCase({
         };
 
         YUITest.Mock.expect(api, {
-            method: 'writeFileInBundle',
-            args: ['foo', 'loader-foo.js', YUITest.Mock.Value.String],
-            callCount: 1,
-            run: function (bundleName, destination_path, contents) {
-                A.areSame('content of loader-foo.js', contents);
-                return {
-                    // mocking promise
-                    then: function (fn) {
-                        return fn(__filename);
-                    }
-                };
-            }
-        });
-        YUITest.Mock.expect(api, {
             method: 'getBundleFiles',
             args: ['foo', YUITest.Mock.Value.Object],
             run: function (bundleName, filters) {
-                return ['bar.js', 'baz.js', 'path/to/build.json'];
-            }
-        });
-        YUITest.Mock.expect(api, {
-            method: 'promise',
-            args: [YUITest.Mock.Value.Function],
-            run: function (fn) {
-                return fn(function (loaderData) {
-                    // A.isString(bundle.yuiBuildDirectory);
-                    A.isString(bundle.buildDirectory);
-                    // verify loaderData matches
-                    return {
-                        then: function (fn) {
-                            fn(loaderData);
-                        }
-                    };
-                }, function () {
-                    A.fail('promise rejected');
-                });
-            }
-        });
-        // YUITest.Mock.expect(loader, {
-        YUITest.Mock.expect(mockShifter, {
-            method: '_checkYUIModule',
-            callCount: 3,
-            args: [YUITest.Mock.Value.String],
-            run: function () {
-                return '_checkYUIModule result';
-            }
-        });
-        // YUITest.Mock.expect(loader, {
-        YUITest.Mock.expect(mockShifter, {
-            method: '_checkBuildFile',
-            callCount: 1,
-            args: [YUITest.Mock.Value.String],
-            run: function () {
-                return '_checkBuildFile result';
+                return ['path/to/build.json'];
             }
         });
         YUITest.Mock.expect(plugin, {
             method: '_buildsInBundle',
-            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Any, YUITest.Mock.Value.Any],
-            run: function (bundle, modifiedFiles) {
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Object, YUITest.Mock.Value.Object],
+            run: function (bundle, files, jsonFiles) {
                 return ['bar.js'];
             }
         });
-        // YUITest.Mock.expect(loader, {
         YUITest.Mock.expect(plugin, {
-            // method: 'registerGroup',
-            method: 'register',
-            args: ['foo', '/path/to/foo-a.b.c', __filename]
-        });
-        // YUITest.Mock.expect(loader, {
-        //     method: 'registerModules',
-        //     args: ['foo', YUITest.Mock.Value.Object],
-        //     run: function (name, modules) {
-        //         A.areEqual('json version of loader-foo.js', modules.mod1, 'mod1 was not registered');
-        //     }
-        // });
-        // YUITest.Mock.expect(loader, {
-        //     method: 'attachModules',
-        //     args: ['foo', YUITest.Mock.Value.Any],
-        //     run: function (name, modules) {
-        //         A.areEqual(1, modules.length, 'mod1 was not attached');
-        //         A.areEqual('mod1', modules[0], 'mod1 was not attached');
-        //     }
-        // });
-        // YUITest.Mock.expect(loader, {
-        YUITest.Mock.expect(mockShifter, {
-            method: 'shiftFiles',
-            args: [YUITest.Mock.Value.Any, YUITest.Mock.Value.Object, YUITest.Mock.Value.Function],
-            run: function (files, options, callback) {
-                callback();
+            method: '_createServerLoaderData',
+            args: [YUITest.Mock.Value.Object],
+            run: function (bundle) {
+                return { loaderData: 'serverLoaderData' };
             }
         });
-        // loader.BuilderClass = function (name, group) {
-        //     this.compile = function (meta) {
-        //         A.isObject(meta);
-        //     };
-        //     this.data = {
-        //         js: 'content of loader-foo.js',
-        //         json: {
-        //             mod1: 'json version of loader-foo.js'
-        //         }
-        //     };
-        // };
+        YUITest.Mock.expect(plugin, {
+            method: '_createClientLoaderData',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.String],
+            run: function (bundle, moduleName) {
+                return { loaderData: 'clientLoaderData' };
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_shiftEverything',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Any, YUITest.Mock.Value.Any, YUITest.Mock.Value.Object, YUITest.Mock.Value.Function],
+            run: function (bundle, cssproc, builds, shifter, cb) {
+                cb(); // no error
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_attachServerLoaderData',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Object],
+            run: function (bundle, loaderData) {
+                // assert loaderData
+                return;
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_attachClientLoaderData',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Object, YUITest.Mock.Value.String],
+            run: function (bundle, api, destPath, loaderData) {
+                // assert loaderData
+                return '/a/b/loader-foo.js';
+            }
+        });
+        YUITest.Mock.expect(plugin, {
+            method: '_attachClientMetaData',
+            args: [YUITest.Mock.Value.Object, YUITest.Mock.Value.Object, YUITest.Mock.Value.String, YUITest.Mock.Value.String],
+            run: function (bundle, builds, moduleName, newfile) {
+                // assert moduleName
+                // assert newfile
+            }
+        });
+
         plugin.bundleUpdated({
             bundle: bundle,
             files: {
@@ -319,11 +538,82 @@ suite.add(new YUITest.TestCase({
                 'baz.js': { fullPath: 'baz.js' },
                 'path/to/something.js': { fullPath: 'path/to/something.js' }
             }
-        }, api);
+        }, {
+            getBundleFiles: api.getBundleFiles,
+            promise: function (fn) {
+                return new Promise(fn);
+            }
+        });
         YUITest.Mock.verify(api);
-        // YUITest.Mock.verify(loader);
+        // FIXME !!!
+        // YUITest.Mock.verify(plugin);
+    },
+
+    "test _buildsInBundle": function () {
+        var plugin,
+            bundle,
+            jsFiles,
+            jsonFiles,
+            results;
+
+        bundle = {
+            name: 'foo'
+        };
+        jsFiles = [
+            '/tmp/a.js',
+            '/tmp/loader-foo.js'
+        ];
+        jsonFiles = [
+            '/tmp/config.json',
+            '/tmp/build.json'
+        ];
+        mockery.resetCache();
+        plugin = new PluginClass();
+
+        YUITest.Mock.expect(plugin, {
+            method: '_register',
+            args: [YUITest.Mock.Value.String,
+                    YUITest.Mock.Value.String,
+                    YUITest.Mock.Value.Object],
+            callCount: 2,
+            run: function (bundleName, file, mod) {
+                A.areEqual('foo', bundleName, 'wrong bundleName');
+            }
+        });
+
+        YUITest.Mock.expect(mockShifter, {
+            method: '_checkYUIModule',
+            args: [YUITest.Mock.Value.String],
+            run: function (file) {
+                A.isTrue(['/tmp/a.js'].indexOf(file) > -1,
+                         'unexpected file being processed: ' + file);
+
+                return {
+                };
+            }
+        });
+        YUITest.Mock.expect(mockShifter, {
+            method: '_checkBuildFile',
+            args: [YUITest.Mock.Value.String],
+            callCount: 1,
+            run: function (file) {
+                A.areEqual('/tmp/build.json', file, 'wrong loader file');
+                return {
+                };
+            }
+        });
+
+        results = plugin._buildsInBundle(
+            bundle,
+            jsFiles,
+            jsonFiles
+        );
+
+        A.isNotUndefined(results, 'expecting results');
+        YUITest.Mock.verify(plugin);
+        YUITest.Mock.verify(mockShifter);
     }
-    */
+
 }));
 
 YUITest.TestRunner.add(suite);

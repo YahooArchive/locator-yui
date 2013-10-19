@@ -1,0 +1,15 @@
+{
+    "name": "demo",
+    "description": "Locator YUI - Integration example with Express YUI",
+    "version": "0.0.1",
+    "private": true,
+    "main": "app.js",
+    "dependencies": {
+        "express": "*",
+        "express-view": "git://github.com/caridy/express-view",
+        "express-yui": "git://github.com/caridy/express-yui#locator-yui",
+        "locator": "git://github.com/caridy/locator#ready-promise",
+        "locator-handlebars": "git://github.com/caridy/locator-handlebars#bundle-templates",
+        "yui": "~3.13.0"
+    }
+}
