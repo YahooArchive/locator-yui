@@ -317,10 +317,10 @@ suite.add(new YUITest.TestCase({
         mock = YUITest.Mock();
         YUITest.Mock.expect(mock, {
             method: 'callback',
-            args: [YUITest.Mock.Value.Any],
+            args: [],
             run: function () {
                 var args = [].slice.call(arguments);
-                A.areEqual(1, args.length, 'no arguments expected');
+                A.areEqual(0, args.length, 'no arguments expected');
                 A.isUndefined(args[0]);
             }
         });
