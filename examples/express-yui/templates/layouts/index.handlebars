@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+
+    <title>locator usage of `express-yui`</title>
+
+</head>
+<body>
+
+    <h1>header goes here for!</h1>
+
+    <p>Tagline: {{tagline}}<p>
+
+    <div id="child">{{{outlet}}}</div>
+
+    <div id="content">
+        Loading ...
+    </div>
+
+    <script>{{{state}}}</script>
+    <script>
+    app.yui.use('alerts-model', 'binder-index', function (Y) {
+        // creating a model based on `alerts-model` module
+        var model = new Y.Model.Alerts({
+            tagline: 'testing some data thru alerts-model',
+            tellme: 'NY is nice too, during summer!'
+        });
+        // using a binder to render a template and with the data from model
+        Y.Binders.index.update(Y.one('#content'), model.toJSON());
+    });
+    </script>
+</body>
+</html>
