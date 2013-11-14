@@ -50,6 +50,21 @@ function createBundles() {
                     }
                 },
                 "name": "news-model"
+            },
+            "/tmp/photonews/build/photonews-0.0.1/models/news1.js": {
+                "buildfile": "/tmp/photonews/build/photonews-0.0.1/models/news1.js",
+                "builds": {
+                    "news-model": {
+                        "config": {
+                            "requires": [
+                                "model"
+                            ],
+                            "affinity": "client"
+                        },
+                        "name": "news-model"
+                    }
+                },
+                "name": "news-model"
             }
         }
     };
