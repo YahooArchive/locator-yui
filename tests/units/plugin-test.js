@@ -51,8 +51,8 @@ function createBundles() {
                 },
                 "name": "news-model"
             },
-            "/tmp/photonews/build/photonews-0.0.1/models/news1.js": {
-                "buildfile": "/tmp/photonews/build/photonews-0.0.1/models/news1.js",
+            "/tmp/photonews/build/photonews-0.0.1/models/sports.js": {
+                "buildfile": "/tmp/photonews/build/photonews-0.0.1/models/sports.js",
                 "builds": {
                     "news-model": {
                         "config": {
