@@ -355,6 +355,7 @@ suite.add(new YUITest.TestCase({
                 A.isTrue(options.args.indexOf('--no-coverage') > -1, 'missing --no-coverage');
                 A.isTrue(options.args.indexOf('--no-lint') > -1, 'missing --no-lint');
                 A.isTrue(options.args.indexOf('--cssproc') > -1, 'missing --cssproc');
+                A.isTrue(options.args[options.args.length-1].indexOf("//") === -1, "file path is not right");
                 cb(); // no error
             }
         });
@@ -363,7 +364,7 @@ suite.add(new YUITest.TestCase({
         plugin._shiftEverything({
             name: 'foo',
             buildDirectory: '/tmp'
-        }, 'assets', ['bar.js'], shifter, mock.callback);
+        }, 'assets/', ['bar.js'], shifter, mock.callback);
 
         YUITest.Mock.verify(mock);
         YUITest.Mock.verify(plugin);
