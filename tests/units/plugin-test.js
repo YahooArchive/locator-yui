@@ -355,6 +355,7 @@ suite.add(new YUITest.TestCase({
                 A.isTrue(options.args.indexOf('--no-coverage') > -1, 'missing --no-coverage');
                 A.isTrue(options.args.indexOf('--no-lint') > -1, 'missing --no-lint');
                 A.isTrue(options.args.indexOf('--cssproc') > -1, 'missing --cssproc');
+                A.isTrue(options.args[options.args.length-1] === "assets/tmp", "wrong url path");
                 cb(); // no error
             }
         });
@@ -366,6 +367,66 @@ suite.add(new YUITest.TestCase({
         }, 'assets', ['bar.js'], shifter, mock.callback);
 
         YUITest.Mock.verify(mock);
+        YUITest.Mock.verify(plugin);
+    },
+
+    "test shiftEverything with cssproc arg value ends with '/'": function () {
+        var plugin = new PluginClass({}),
+            shifter = YUITest.Mock();
+
+        YUITest.Mock.expect(shifter, {
+            method: 'shiftFiles',
+            args: [YUITest.Mock.Value.Any, YUITest.Mock.Value.Object, YUITest.Mock.Value.Function],
+            run: function (builds, options, cb) {
+                A.isTrue(options.args[options.args.length-1] === "assets/tmp", "wrong url path");
+                cb();
+            }
+        });
+        plugin._shiftEverything({
+            name: 'foo',
+            buildDirectory: '/tmp'
+        }, 'assets/', ['bar.js'], shifter, function () {});
+
+        YUITest.Mock.verify(plugin);
+    },
+
+    "test shiftEverything with cssproc arg value '/'": function () {
+        var plugin = new PluginClass({}),
+            shifter = YUITest.Mock();
+
+        YUITest.Mock.expect(shifter, {
+            method: 'shiftFiles',
+            args: [YUITest.Mock.Value.Any, YUITest.Mock.Value.Object, YUITest.Mock.Value.Function],
+            run: function (builds, options, cb) {
+                A.isTrue(options.args[options.args.length-1] === "/tmp", "wrong url path");
+                cb();
+            }
+        });
+        plugin._shiftEverything({
+            name: 'foo',
+            buildDirectory: '/tmp'
+        }, '/', ['bar.js'], shifter, function () {});
+
+        YUITest.Mock.verify(plugin);
+    },
+
+    "test shiftEverything with empty cssproc arg value": function () {
+        var plugin = new PluginClass({}),
+            shifter = YUITest.Mock();
+
+        YUITest.Mock.expect(shifter, {
+            method: 'shiftFiles',
+            args: [YUITest.Mock.Value.Any, YUITest.Mock.Value.Object, YUITest.Mock.Value.Function],
+            run: function (builds, options, cb) {
+                A.isTrue(options.args.indexOf('--cssproc') === -1, 'still see --cssproc argument');
+                cb();
+            }
+        });
+        plugin._shiftEverything({
+            name: 'foo',
+            buildDirectory: '/tmp'
+        }, '', ['bar.js'], shifter, function () {});
+
         YUITest.Mock.verify(plugin);
     },
 
