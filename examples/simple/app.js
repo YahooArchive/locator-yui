@@ -25,6 +25,5 @@ new Locator({
         });
 
     }, function (e) {
-        console.log(e);
-        console.log(e.stack);
+        console.log(e.stack || e);
     });
