@@ -1,6 +1,10 @@
 Locator YUI Change History
 ==========================
 
+0.1.2 (2014-03-11)
+
+* [PR #13] perf improvements in shifter process by running shifter in the same thread instead of spawing a new process.
+
 0.1.1 (2013-12-17)
 
 * Fix issue of 'cssproc' to support '/'
