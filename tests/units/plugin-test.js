@@ -121,12 +121,12 @@ suite.add(new YUITest.TestCase({
         A.isObject(plugin, "failing to create a plugin object");
         A.isObject(plugin.describe, "missing describe member on plugin instance");
         A.isFunction(plugin.bundleUpdated, "missing bundleUpdated member on plugin instance");
-        A.isArray(plugin.describe.args, "default shifter options should be honored");
+        A.isObject(plugin.describe.shifterOptions, "default shifter options should be computed");
     },
 
     "test constructor with options": function () {
         var plugin,
-            args;
+            shifterOptions;
 
         plugin = new PluginClass({
             filter: /^foo/,
@@ -143,11 +143,9 @@ suite.add(new YUITest.TestCase({
                    plugin.describe.options.filter({}, 'foo/bar/baz.js'),
                    'filter should match /^foo/');
 
-        args = plugin.describe.args;
-        A.isTrue(args.indexOf('--no-coverage') > -1, 'missing --no-coverage option');
-        A.isTrue(args.indexOf('--no-lint') > -1, 'missing --no-lint option');
-        // A.isTrue(args.indexOf('--silent') > -1, 'missing --silent option');
-        // A.isTrue(args.indexOf('--quiet') > -1, 'missing --quiet option');
+        shifterOptions = plugin.describe.shifterOptions;
+        A.isFalse(shifterOptions.coverage, 'missing coverage option');
+        A.isFalse(shifterOptions.lint, 'missing lint option');
         OA.areEqual({}, plugin._bundles, 'this._bundles was not init');
     },
 
@@ -194,7 +192,7 @@ suite.add(new YUITest.TestCase({
         // { 'news-model': { affinity: 'client', group: 'photonews', requires:
         // [Object] } }
         // A.areEqual('client', json.affinity, 'wrong affinity');
-        
+
         A.areEqual('photonews', json['news-model'].group, 'wrong group');
         A.isNotUndefined(json['news-model'].requires, 'missing "requires"');
         A.areEqual(1, json['news-model'].requires.length, 'wrong # of modules in "requires"');
@@ -225,7 +223,7 @@ suite.add(new YUITest.TestCase({
         var filterObj,
             plugin,
             api;
-            
+
         filterObj = YUITest.Mock();
         YUITest.Mock.expect(filterObj, {
             method: 'filter',
@@ -350,62 +348,67 @@ suite.add(new YUITest.TestCase({
                 A.areEqual('bar.js', builds[0], 'wrong file in builds');
                 A.areEqual('/tmp', options.buildDir, 'wrong buildDir');
                 A.areEqual(true, options.cache, 'cache should be defined');
-                // A.areEqual(true, options.args.indexOf('--cssproc')
-                A.isTrue(options.args.indexOf('--no-global-config') > -1, 'missing --no-global-config');
-                A.isTrue(options.args.indexOf('--no-coverage') > -1, 'missing --no-coverage');
-                A.isTrue(options.args.indexOf('--no-lint') > -1, 'missing --no-lint');
-                A.isTrue(options.args.indexOf('--cssproc') > -1, 'missing --cssproc');
-                A.isTrue(options.args[options.args.length-1] === "assets/tmp", "wrong url path");
+                A.isFalse(options.opts['global-config'], 'missing --no-global-config');
+                A.isFalse(options.opts['coverage'], 'missing --no-coverage');
+                A.isFalse(options.opts['lint'], 'missing --no-lint');
+                A.isString(options.opts['cssproc'], 'missing --cssproc');
+                A.areEqual("assets/tmp", options.opts.cssproc, "wrong url path");
                 cb(); // no error
             }
         });
 
-        plugin = new PluginClass({});
+        plugin = new PluginClass({
+            cssproc: 'assets'
+        });
         plugin._shiftEverything({
             name: 'foo',
             buildDirectory: '/tmp'
-        }, 'assets', ['bar.js'], shifter, mock.callback);
+        }, ['bar.js'], shifter, mock.callback);
 
         YUITest.Mock.verify(mock);
         YUITest.Mock.verify(plugin);
     },
 
     "test shiftEverything with cssproc arg value ends with '/'": function () {
-        var plugin = new PluginClass({}),
+        var plugin = new PluginClass({
+                cssproc: 'assets/'
+            }),
             shifter = YUITest.Mock();
 
         YUITest.Mock.expect(shifter, {
             method: 'shiftFiles',
             args: [YUITest.Mock.Value.Any, YUITest.Mock.Value.Object, YUITest.Mock.Value.Function],
             run: function (builds, options, cb) {
-                A.isTrue(options.args[options.args.length-1] === "assets/tmp", "wrong url path");
+                A.areEqual("assets/tmp", options.opts.cssproc, "wrong url path");
                 cb();
             }
         });
         plugin._shiftEverything({
             name: 'foo',
             buildDirectory: '/tmp'
-        }, 'assets/', ['bar.js'], shifter, function () {});
+        }, ['bar.js'], shifter, function () {});
 
         YUITest.Mock.verify(plugin);
     },
 
     "test shiftEverything with cssproc arg value '/'": function () {
-        var plugin = new PluginClass({}),
+        var plugin = new PluginClass({
+                cssproc: '/'
+            }),
             shifter = YUITest.Mock();
 
         YUITest.Mock.expect(shifter, {
             method: 'shiftFiles',
             args: [YUITest.Mock.Value.Any, YUITest.Mock.Value.Object, YUITest.Mock.Value.Function],
             run: function (builds, options, cb) {
-                A.isTrue(options.args[options.args.length-1] === "/tmp", "wrong url path");
+                A.areEqual("/tmp", options.opts.cssproc, "wrong url path");
                 cb();
             }
         });
         plugin._shiftEverything({
             name: 'foo',
             buildDirectory: '/tmp'
-        }, '/', ['bar.js'], shifter, function () {});
+        }, ['bar.js'], shifter, function () {});
 
         YUITest.Mock.verify(plugin);
     },
@@ -418,14 +421,14 @@ suite.add(new YUITest.TestCase({
             method: 'shiftFiles',
             args: [YUITest.Mock.Value.Any, YUITest.Mock.Value.Object, YUITest.Mock.Value.Function],
             run: function (builds, options, cb) {
-                A.isTrue(options.args.indexOf('--cssproc') === -1, 'still see --cssproc argument');
+                A.isUndefined(options.opts.cssproc, "still see --cssproc argument");
                 cb();
             }
         });
         plugin._shiftEverything({
             name: 'foo',
             buildDirectory: '/tmp'
-        }, '', ['bar.js'], shifter, function () {});
+        }, ['bar.js'], shifter, function () {});
 
         YUITest.Mock.verify(plugin);
     },
@@ -457,11 +460,13 @@ suite.add(new YUITest.TestCase({
             }
         });
 
-        plugin = new PluginClass({});
+        plugin = new PluginClass({
+            cssproc: 'assets'
+        });
         plugin._shiftEverything({
             name: 'foo',
             buildDirectory: '/tmp'
-        }, 'assets', ['bar.js'], shifter, mock.callback);
+        }, ['bar.js'], shifter, mock.callback);
 
         YUITest.Mock.verify(mock);
         YUITest.Mock.verify(plugin);

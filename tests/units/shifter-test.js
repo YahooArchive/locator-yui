@@ -17,8 +17,6 @@ var YUITest = require('yuitest'),
     suite,
     shifter,
     BuilderClass,
-    childMockFn,
-    mockspawn,
     fixture = libpath.join(__dirname, '..', 'fixtures'),
     tmpFolder = function () {
         var tmpNames = [ 'TMPDIR', 'TMP', 'TEMP' ],
@@ -32,6 +30,8 @@ var YUITest = require('yuitest'),
     };
 
 
+mockery.resetCache();
+
 // forcing mode to be development
 process.env.NODE_ENV = 'development';
 
@@ -41,34 +41,13 @@ suite.add(new YUITest.TestCase({
     name: "shifter-test",
 
     setUp: function () {
-        // nothing
-        // mocking win-spawn
-        mockspawn = function () {
-            return childMockFn.apply(this, arguments);
-        };
-        mockery.registerMock('win-spawn', mockspawn);
-        mockery.enable({
-            useCleanCache: true,
-            warnOnReplace: false,
-            warnOnUnregistered: false
-        });
-
         // requiring component
         shifter = require('../../lib/shifter.js');
         BuilderClass = require('../../lib/builder.js');
-
     },
 
     tearDown: function () {
-        // unregister mocks
-        mockspawn = null;
-
-        // mockery.deregisterMock('win-spawn');
-        mockery.deregisterAll();
-        mockery.disable();
-
-        shifter = null;
-        BuilderClass = null;
+        mockery.resetCache();
     },
 
     "test constructor": function () {
@@ -116,92 +95,65 @@ suite.add(new YUITest.TestCase({
     },
 
     "test shiftFiles without files": function () {
-        var result,
-            child = YUITest.Mock();
-        YUITest.Mock.expect(child, {
-            method: 'on',
-            callCount: 0
-        });
-        childMockFn = function () {
-            return child;
-        };
         shifter.shiftFiles([], { buildDir: tmpFolder() }, function (err) {
             A.isNull(err, 'not error is expected');
         });
-        YUITest.Mock.verify(child);
     },
 
     "test shiftFiles with js files": function () {
-        var child = YUITest.Mock(),
-            files = [libpath.join(fixture, 'app-module.js'), libpath.join(fixture, 'metas.js')];
-        YUITest.Mock.expect(child, {
-            method: 'on',
-            args: ['exit', YUITest.Mock.Value.Function],
-            callCount: 2,
-            // callCount: 0,
-            run: function (evt, fn) {
-                fn();
-            }
-        });
-        childMockFn = function (command, args) {
-            A.areSame('something', args[args.length - 2]);
-            A.areSame('another', args[args.length - 1]);
-            A.isTrue(args.indexOf('--yui-module') >= 0);
-            return child;
-        };
+        var files = [libpath.join(fixture, 'app-module.js'), libpath.join(fixture, 'metas.js')],
+            test = this;
+
         shifter.shiftFiles(files, {
             buildDir: tmpFolder(),
-            args: ['something', 'another']
+            opts: {
+                "global-config": false,
+                "coverage": false,
+                "lint": false
+            }
         }, function (err) {
-            A.isNull(err, 'no error is expected');
+            test.resume(function(){
+                A.isNull(err, 'no error is expected');
+            });
         });
-        YUITest.Mock.verify(child);
+        test.wait();
     },
 
     "test shiftFiles with build.json": function () {
-        var child = YUITest.Mock(),
-            files = [libpath.join(fixture, 'mod-valid1/build.json')];
-        YUITest.Mock.expect(child, {
-            method: 'on',
-            args: ['exit', YUITest.Mock.Value.Function],
-            callCount: 1,
-            run: function (evt, fn) {
-                fn();
-            }
-        });
-        childMockFn = function (command, args) {
-            A.areSame('something', args[args.length - 2]);
-            A.areSame('another', args[args.length - 1]);
-            A.isTrue(args.indexOf('--config') >= 0);
-            return child;
-        };
+        var files = [libpath.join(fixture, 'mod-valid1/build.json')],
+            test = this;
         shifter.shiftFiles(files, {
             buildDir: tmpFolder(),
-            args: ['something', 'another']
+            opts: {
+                "global-config": false,
+                "coverage": false,
+                "lint": false
+            }
         }, function (err) {
-            A.isNull(err, 'no error is expected');
+            test.resume(function(){
+                A.isNull(err, 'no error is expected');
+            });
         });
-        YUITest.Mock.verify(child);
+        test.wait();
     },
 
-    "test shiftFiles with exit code": function () {
-        var child = YUITest.Mock();
-        YUITest.Mock.expect(child, {
-            method: 'on',
-            args: ['exit', YUITest.Mock.Value.Function],
-            callCount: 1,
-            run: function (evt, fn) {
-                fn(1);
-            }
-        });
-        childMockFn = function (command, args) {
-            return child;
-        };
-        shifter.shiftFiles([libpath.join(fixture, 'app-module.js')], { buildDir: tmpFolder() }, function (err) {
-            A.isObject(err, 'error is expected to bubble up from spawn');
-        });
-        YUITest.Mock.verify(child);
-    },
+    // TODO: this is pending to PR https://github.com/yui/shifter/pull/115
+    // "test shiftFiles with exit code": function () {
+    //     var test = this;
+    //     shifter.shiftFiles([libpath.join(fixture, 'missing.js')], {
+    //         buildDir: tmpFolder(),
+    //         opts: {
+    //             "global-config": false,
+    //             "coverage": false,
+    //             "lint": false
+    //         }
+    //     }, function (err) {
+    //         test.resume(function(){
+    //             A.isObject(err, 'error is expected to bubble up');
+    //         });
+    //     });
+    //     test.wait();
+    // },
 
     "test _isCached": function () {
         var self = this;
