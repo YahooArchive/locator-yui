@@ -1,0 +1,15 @@
+{
+    "name": "stencil",
+    "builds": {
+        "foo": {
+            "jsfiles": [
+                "foo.js"
+            ],
+            "assets": true
+        }
+    },
+    "shifter": {
+        "coverage": false,
+        "lint": false
+    }
+}

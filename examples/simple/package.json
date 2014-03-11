@@ -6,7 +6,6 @@
     "main": "app.js",
     "dependencies": {
         "express": "*",
-        "express-yui": "git://github.com/caridy/express-yui#locator-yui",
-        "locator": "git://github.com/caridy/locator#ready-promise"
+        "locator": "*"
     }
 }
